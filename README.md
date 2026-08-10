@@ -16,6 +16,10 @@
 - Assigns you one of ten wool tiers, judged on value extracted per subscription dollar. Click your tier for a Minecraft-style achievement. The low tiers are not compliments.
 - Light and dark, English and Simplified Chinese.
 
+## "Doesn't Claude Code already do this?"
+
+`/cost` tells you what's eating your rate limit over the last 7 days, and — because you're on a subscription — carefully shows you no dollars at all. Codex's `/status` counts the session you're sitting in. Neither will tell you what the whole thing was worth, and neither has heard of the other. That's this.
+
 ## Install
 
 1. Download `Meter-Beater-<version>-macOS-universal.zip` from [Releases](../../releases/latest).
