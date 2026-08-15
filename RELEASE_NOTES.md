@@ -6,6 +6,11 @@ sillier outfit.
 
 ## Highlights
 
+- The complete app, accounting engine, tests, release scripts, and marketing
+  renderer are now open source under the MIT License.
+- Provider access is narrower: manually selected folders use explicitly
+  read-only security-scoped bookmarks, and Codex scans no longer open or
+  fingerprint `~/.codex/auth.json`.
 - New name everywhere: bundle, Finder localizations (`Meter Beater` / `羊毛计` /
   `羊毛計`), panel header, packaging, and release artifacts.
 - New app icon: a sheep whose fleece is the meter — a seven-segment `$88`
@@ -36,9 +41,10 @@ sillier outfit.
   confetti burst in the panel.
 - The serving-cost flame breathes gently, and the empty state counts sheep.
 
-No accounting, pricing, storage, or privacy behavior changed. The bundle
-identifier and cache locations are identical, so existing installs upgrade in
-place with no migration.
+Accounting, pricing, the bundle identifier, and cache locations are unchanged,
+so existing installs upgrade in place with no migration. A refresh resets
+legacy Codex current-auth attribution to source-only metadata; displayed
+provider totals are unaffected.
 
 ---
 
