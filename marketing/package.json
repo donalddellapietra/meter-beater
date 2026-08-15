@@ -1,0 +1,14 @@
+{
+  "name": "meter-beater-marketing",
+  "private": true,
+  "type": "module",
+  "description": "Composable launch screenshot pipeline: React components -> static HTML -> WebKit-rendered PNGs.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

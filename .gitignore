@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+DerivedData/
+*.xcuserstate
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+dist/
+__pycache__/
+marketing/node_modules/
+marketing/out/
+marketing/captures/
+marketing/.tmp/

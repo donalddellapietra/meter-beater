@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an improvement to Meter Beater
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What should Meter Beater make easier or clearer?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Product constraints
+      options:
+        - label: This can preserve local-only processing and read-only provider access.
+          required: true
+        - label: I searched existing issues for this request.
+          required: true

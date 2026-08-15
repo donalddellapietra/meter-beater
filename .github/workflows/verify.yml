@@ -1,0 +1,57 @@
+name: Verify
+
+on:
+  push:
+    branches: [main, "agent/**", "codex/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-macos:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Run Swift tests
+        run: swift test -Xswiftc -warnings-as-errors
+
+      - name: Build and archive app
+        run: scripts/package-app.sh
+
+      - name: Upload macOS app artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Meter-Beater-macOS-universal
+          path: |
+            dist/Meter-Beater-*-macOS-universal.zip
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+      - name: Check patch whitespace
+        run: git diff --check
+
+  test-marketing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+
+      - name: Install marketing dependencies
+        run: npm ci
+        working-directory: marketing
+
+      - name: Build marketing layouts
+        run: npm run build
+        working-directory: marketing
