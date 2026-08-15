@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+
+  - package-ecosystem: npm
+    directory: /marketing
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      marketing-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - dependencies

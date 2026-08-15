@@ -1,0 +1,83 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#79C957"/>
+      <stop offset="1" stop-color="#2E8B44"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="100" y="100" width="824" height="824" rx="186" ry="186"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <!-- pasture -->
+    <rect x="100" y="100" width="824" height="824" fill="url(#bg)"/>
+
+    <!-- ground shadow -->
+    <ellipse cx="512" cy="856" rx="225" ry="32" fill="#1A6130" opacity="0.5"/>
+
+    <!-- legs (behind the wool) -->
+    <rect x="430" y="750" width="36" height="96" rx="17" fill="#33302C"/>
+    <rect x="558" y="750" width="36" height="96" rx="17" fill="#33302C"/>
+
+    <!-- wool: one symmetric cloud, a ring of eight puffs on a center circle -->
+    <circle cx="682" cy="560" r="92" fill="#FAF7F0"/>
+    <circle cx="632" cy="680" r="92" fill="#FAF7F0"/>
+    <circle cx="512" cy="720" r="92" fill="#FAF7F0"/>
+    <circle cx="392" cy="680" r="92" fill="#FAF7F0"/>
+    <circle cx="342" cy="560" r="92" fill="#FAF7F0"/>
+    <circle cx="392" cy="440" r="92" fill="#FAF7F0"/>
+    <circle cx="512" cy="400" r="92" fill="#FAF7F0"/>
+    <circle cx="632" cy="440" r="92" fill="#FAF7F0"/>
+    <circle cx="512" cy="560" r="185" fill="#FAF7F0"/>
+
+    <!-- the meter, set right into the fleece -->
+    <rect x="357" y="509" width="310" height="158" rx="30" fill="#17211A"/>
+    <rect x="357" y="509" width="310" height="158" rx="30" fill="none" stroke="#0B120C" stroke-width="5"/>
+    <g fill="#6FE873">
+      <!-- $ -->
+      <g transform="translate(409 540)">
+        <rect x="7" y="0" width="40" height="12" rx="6"/>
+        <rect x="0" y="7" width="12" height="36" rx="6"/>
+        <rect x="7" y="42" width="40" height="12" rx="6"/>
+        <rect x="42" y="53" width="12" height="36" rx="6"/>
+        <rect x="7" y="84" width="40" height="12" rx="6"/>
+        <rect x="22" y="-13" width="12" height="9" rx="4"/>
+        <rect x="22" y="100" width="12" height="9" rx="4"/>
+      </g>
+      <!-- 8 -->
+      <g transform="translate(485 540)">
+        <rect x="7" y="0" width="40" height="12" rx="6"/>
+        <rect x="0" y="7" width="12" height="36" rx="6"/>
+        <rect x="42" y="7" width="12" height="36" rx="6"/>
+        <rect x="7" y="42" width="40" height="12" rx="6"/>
+        <rect x="0" y="53" width="12" height="36" rx="6"/>
+        <rect x="42" y="53" width="12" height="36" rx="6"/>
+        <rect x="7" y="84" width="40" height="12" rx="6"/>
+      </g>
+      <!-- 8 -->
+      <g transform="translate(561 540)">
+        <rect x="7" y="0" width="40" height="12" rx="6"/>
+        <rect x="0" y="7" width="12" height="36" rx="6"/>
+        <rect x="42" y="7" width="12" height="36" rx="6"/>
+        <rect x="7" y="42" width="40" height="12" rx="6"/>
+        <rect x="0" y="53" width="12" height="36" rx="6"/>
+        <rect x="42" y="53" width="12" height="36" rx="6"/>
+        <rect x="7" y="84" width="40" height="12" rx="6"/>
+      </g>
+    </g>
+
+    <!-- head: emoji-simple, centered -->
+    <ellipse cx="412" cy="315" rx="42" ry="17" transform="rotate(-22 412 315)" fill="#33302C"/>
+    <ellipse cx="612" cy="315" rx="42" ry="17" transform="rotate(22 612 315)" fill="#33302C"/>
+    <circle cx="512" cy="300" r="85" fill="#33302C"/>
+    <ellipse cx="480" cy="312" rx="11" ry="15" fill="#F6F2E8"/>
+    <ellipse cx="544" cy="312" rx="11" ry="15" fill="#F6F2E8"/>
+    <circle cx="480" cy="317" r="4.5" fill="#17211A"/>
+    <circle cx="544" cy="317" r="4.5" fill="#17211A"/>
+    <!-- wool cap -->
+    <circle cx="466" cy="242" r="42" fill="#FAF7F0"/>
+    <circle cx="512" cy="228" r="46" fill="#FAF7F0"/>
+    <circle cx="558" cy="242" r="42" fill="#FAF7F0"/>
+  </g>
+</svg>

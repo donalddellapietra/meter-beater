@@ -1,0 +1,86 @@
+name: Bug report
+description: Report a reproducible problem in Meter Beater
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not attach real transcripts, `auth.json`, provider databases, credentials, or account identifiers.
+
+  - type: input
+    id: version
+    attributes:
+      label: Meter Beater version
+      placeholder: 1.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: 15.6
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Mac architecture
+      options:
+        - Apple silicon
+        - Intel
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: providers
+    attributes:
+      label: Enabled providers
+      options:
+        - label: Codex
+        - label: Claude Code
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use synthetic or redacted data only.
+      placeholder: |
+        1. Open Meter Beater
+        2. Select …
+        3. Observe …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Redacted screenshots and warning text are welcome. Do not include private provider data.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Safety checklist
+      options:
+        - label: I removed transcripts, credentials, account identifiers, and private paths.
+          required: true
+        - label: I searched existing issues for this problem.
+          required: true
