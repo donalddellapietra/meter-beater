@@ -945,8 +945,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
         var summary = UsageSummary()
         if let sourceIDs, sourceIDs.isEmpty { return summary }
 
-        let cutoff = PricingCatalog.sonnet5RateChange.timeIntervalSince1970
-        let pricingPeriod = "CASE WHEN provider = 'Claude Code' AND lower(model) LIKE 'claude-sonnet-5%' AND timestamp >= \(cutoff) THEN 1 ELSE 0 END"
+        let pricingPeriod = PricingCatalog.pricingPeriodSQL()
         var sql = """
             WITH \(Self.deduplicatedEventsCTE)
             SELECT provider, model, \(pricingPeriod),
@@ -999,9 +998,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
                 outputTokens: sqlite3_column_int64(statement, 14),
                 reasoningOutputTokens: sqlite3_column_int64(statement, 15)
             ))
-            let pricedAt = sqlite3_column_int(statement, 2) == 0
-                ? PricingCatalog.sonnet5RateChange.addingTimeInterval(-1)
-                : PricingCatalog.sonnet5RateChange.addingTimeInterval(1)
+            let pricedAt = Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))
             let quote = UsageAccounting.quote(usage: usage, pricingContext: pricingContext, provider: provider, model: model, at: pricedAt)
             UsageAccounting.recordTotals(usage: usage, recordCount: count, quote: quote, in: &summary)
 
@@ -1031,8 +1028,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
         }
         let eventsTable = materialized ? "dashboard_summary_events" : "deduplicated_events"
         let dedupePrefix = materialized ? "" : "WITH \(Self.deduplicatedEventsCTE) "
-        let sonnet5Cutoff = PricingCatalog.sonnet5RateChange.timeIntervalSince1970
-        let pricingPeriod = "CASE WHEN provider = 'Claude Code' AND lower(model) LIKE 'claude-sonnet-5%' AND timestamp >= \(sonnet5Cutoff) THEN 1 ELSE 0 END"
+        let pricingPeriod = PricingCatalog.pricingPeriodSQL()
         var sql = "\(dedupePrefix)SELECT provider, model, account_id, current_auth_account_id, attribution_confidence, attribution_basis, source_id, strftime('%Y-%m-%d', timestamp, 'unixepoch', 'localtime'), SUM(event_count), SUM(CASE WHEN is_subagent = 1 THEN event_count ELSE 0 END), SUM(input_tokens), SUM(cached_input_tokens), SUM(cache_write_5m_tokens), SUM(cache_write_1h_tokens), SUM(output_tokens), SUM(reasoning_output_tokens), SUM(long_context_input_tokens), SUM(long_context_cached_input_tokens), SUM(long_context_cache_write_5m_tokens), SUM(long_context_cache_write_1h_tokens), SUM(long_context_output_tokens), SUM(long_context_reasoning_output_tokens), \(pricingPeriod) FROM \(eventsTable)"
         var predicates: [String] = []
         if start != nil { predicates.append("timestamp >= ?") }
@@ -1058,9 +1054,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
             let count = Int(sqlite3_column_int64(statement, 8))
             let usage = TokenUsage(inputTokens: sqlite3_column_int64(statement, 10), cachedInputTokens: sqlite3_column_int64(statement, 11), cacheWrite5mInputTokens: sqlite3_column_int64(statement, 12), cacheWrite1hInputTokens: sqlite3_column_int64(statement, 13), outputTokens: sqlite3_column_int64(statement, 14), reasoningOutputTokens: sqlite3_column_int64(statement, 15))
             let pricingContext = APIPricingContext(longContextUsage: TokenUsage(inputTokens: sqlite3_column_int64(statement, 16), cachedInputTokens: sqlite3_column_int64(statement, 17), cacheWrite5mInputTokens: sqlite3_column_int64(statement, 18), cacheWrite1hInputTokens: sqlite3_column_int64(statement, 19), outputTokens: sqlite3_column_int64(statement, 20), reasoningOutputTokens: sqlite3_column_int64(statement, 21)))
-            let dayStart = DateParsing.parse("\(day)T00:00:00Z") ?? Date()
-            let isPostSonnet5Rate = sqlite3_column_int(statement, 22) != 0
-            let at = isPostSonnet5Rate ? PricingCatalog.sonnet5RateChange.addingTimeInterval(1) : dayStart
+            let at = Date(timeIntervalSince1970: sqlite3_column_double(statement, 22))
             let quote = UsageAccounting.quote(usage: usage, pricingContext: pricingContext, provider: provider, model: model, at: at)
             UsageAccounting.recordTotals(usage: usage, recordCount: count, subagentRecordCount: Int(sqlite3_column_int64(statement, 9)), attributionConfidence: confidence, quote: quote, in: &summary)
 
@@ -1144,8 +1138,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
     }
 
     private func subagentBreakdowns(from start: Date?, to end: Date?, sourceIDs: Set<String>?, limit: Int?, eventsTable: String = "deduplicated_events", includeDedupeCTE: Bool = true) -> [SubagentUsageBreakdown] {
-        let cutoff = PricingCatalog.sonnet5RateChange.timeIntervalSince1970
-        let pricingPeriod = "CASE WHEN e.provider = 'Claude Code' AND lower(e.model) LIKE 'claude-sonnet-5%' AND e.timestamp >= \(cutoff) THEN 1 ELSE 0 END"
+        let pricingPeriod = PricingCatalog.pricingPeriodSQL(timestamp: "e.timestamp")
         func predicates(alias: String) -> [String] {
             var values = ["\(alias)is_subagent = 1"]
             if start != nil { values.append("\(alias)timestamp >= ?") }
@@ -1190,8 +1183,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
             let count = Int(sqlite3_column_int64(statement, 5))
             let usage = TokenUsage(inputTokens: sqlite3_column_int64(statement, 6), cachedInputTokens: sqlite3_column_int64(statement, 7), cacheWrite5mInputTokens: sqlite3_column_int64(statement, 8), cacheWrite1hInputTokens: sqlite3_column_int64(statement, 9), outputTokens: sqlite3_column_int64(statement, 10), reasoningOutputTokens: sqlite3_column_int64(statement, 11))
             let pricingContext = APIPricingContext(longContextUsage: TokenUsage(inputTokens: sqlite3_column_int64(statement, 12), cachedInputTokens: sqlite3_column_int64(statement, 13), cacheWrite5mInputTokens: sqlite3_column_int64(statement, 14), cacheWrite1hInputTokens: sqlite3_column_int64(statement, 15), outputTokens: sqlite3_column_int64(statement, 16), reasoningOutputTokens: sqlite3_column_int64(statement, 17)))
-            let isPostSonnet5Rate = sqlite3_column_int(statement, 18) != 0
-            let at = isPostSonnet5Rate ? PricingCatalog.sonnet5RateChange.addingTimeInterval(1) : PricingCatalog.sonnet5RateChange.addingTimeInterval(-1)
+            let at = Date(timeIntervalSince1970: sqlite3_column_double(statement, 18))
             let quote = UsageAccounting.quote(usage: usage, pricingContext: pricingContext, provider: provider, model: model, at: at)
             let key = "\(provider.rawValue):\(sourceID):\(sessionID):parent=\(parentSessionID ?? "none")"
             var breakdown = result[key] ?? SubagentUsageBreakdown(id: key, provider: provider, sourceID: sourceID, sessionID: sessionID, parentSessionID: parentSessionID)
@@ -1707,8 +1699,32 @@ public final class SQLiteIndexStore: @unchecked Sendable {
     }
 
     private func migrateAccountingGeneration() throws {
-        let currentGeneration = 6
-        guard userVersion() < currentGeneration else { return }
+        let currentGeneration = 7
+        let previousGeneration = userVersion()
+        guard previousGeneration < currentGeneration else { return }
+        if previousGeneration >= 6 {
+            // Prices are computed at query time. Only Astra's newly recognized
+            // long-context subsets and rollups spanning a price-change day
+            // need replay. Retain their rows until the normal bounded refresh
+            // can atomically replace them, including when a source is offline.
+            let boundaries = [PricingCatalog.terraLunaRateChange, PricingCatalog.solRateChange]
+            let nearBoundary = boundaries.map {
+                "timestamp >= \($0.timeIntervalSince1970 - 86_400) AND timestamp < \($0.timeIntervalSince1970 + 86_400)"
+            }.map { "(\($0))" }.joined(separator: " OR ")
+            try transaction {
+                try exec("""
+                    DELETE FROM files WHERE (source_id, path) IN (
+                        SELECT source_id, source_path FROM events
+                        WHERE provider = 'Codex' AND (
+                            lower(model) LIKE 'gpt-6-astra%'
+                            OR (id LIKE 'rollup:%' AND lower(model) LIKE 'gpt-5.6-%' AND (\(nearBoundary)))
+                        )
+                    )
+                    """)
+                try exec("PRAGMA user_version = \(currentGeneration)")
+            }
+            return
+        }
         // The cache is disposable app-owned state. The prior generation
         // lacks per-request model attribution, a resumable active-model cursor,
         // and long-context pricing subsets,

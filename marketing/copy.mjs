@@ -8,7 +8,7 @@ export const COPY = {
     bodyFont: '"Avenir Next", "Futura", sans-serif',
     kickerTracking: "0.34em",
     wordmark: "Meter Beater",
-    version: "v1.1.0 · macOS 15+",
+    version: "v1.1.3 · macOS 15+",
     tagline: "Your subscription's odometer",
     shots: {
       hero: {
@@ -58,7 +58,7 @@ export const COPY = {
     bodyFont: '"PingFang SC", "Hiragino Sans GB", sans-serif',
     kickerTracking: "0.5em",
     wordmark: "羊毛计",
-    version: "v1.1.0 · macOS 15+",
+    version: "v1.1.3 · macOS 15+",
     tagline: "你的订阅里程表",
     shots: {
       hero: {

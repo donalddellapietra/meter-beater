@@ -1,3 +1,56 @@
+# Meter Beater 1.1.3
+
+- Recognize GPT-6 Astra and Claude Fable/Mythos 5.1 with their published API,
+  cache, long-context, and applicable Codex-credit rates.
+- Apply the GPT-5.6 Sol, Terra, and Luna price reductions from their effective
+  dates, preserving earlier prices for earlier usage.
+- Remove Sonnet 5's cancelled September price increase.
+- Keep unknown versions explicitly unpriced instead of matching an older model
+  by prefix. Retain verified dated snapshots and older Codex API model rates.
+- Refresh affected cached accounting automatically without rebuilding unrelated
+  transcripts, and discard saved dollar snapshots made with older pricing.
+
+---
+
+# Meter Beater 1.1.2
+
+This patch makes automatic usage updates self-healing without waking the hidden
+panel's visual effects.
+
+## Fixes
+
+- A low-frequency five-minute reconciliation now remains enabled even when the
+  filesystem watcher starts successfully, covering streams lost after sleep.
+- Opening a panel whose data is more than one minute old requests an immediate
+  update.
+- Dropped filesystem events and watched-root changes request a complete bounded
+  check instead of allowing the displayed totals to remain stale.
+
+The safety task sleeps between checks, unchanged files are not reparsed, and
+panel animations still run only while the panel is visible.
+
+---
+
+# Meter Beater 1.1.1
+
+This patch keeps Meter Beater asleep when its menu-bar panel is closed.
+
+## Fixes
+
+- Decorative effects and indeterminate progress animations now run only while
+  the menu-bar panel is actually visible and active.
+- Closing the panel stops its SwiftUI display link instead of allowing the
+  serving-cost flame or empty-state indicator to render continuously in the
+  background.
+- Background usage refreshes update the menu-bar value without starting hidden
+  numeric transitions or a model-wide animation transaction.
+- Opening the panel still runs the meter roll, sheep waggle, wool puff, live
+  refresh spinner, and other existing effects as before.
+
+Accounting, pricing, provider access, and cache formats are unchanged.
+
+---
+
 # Meter Beater 1.1.0
 
 Frontier Subsidy is now **Meter Beater** — in Simplified Chinese, **羊毛计** (a

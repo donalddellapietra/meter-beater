@@ -24,11 +24,11 @@
 
 ## 「Claude Code 不是已经有了吗？」
 
-`/cost` 告诉你最近 7 天是什么在吃你的额度，而且——因为你用的是订阅——它一个美元数字都不给你看。Codex 的 `/status` 只数你当前这一个会话。两个都不会告诉你这一切总共值多少钱，而且它们互相不知道对方的存在。这就是本应用存在的理由。
+羊毛计把两个工具的本地用量汇总成一个菜单栏总数，按公开 API 单价折算。无需连接账号或提供 API 密钥。它提供跨服务商的美元等价比较，不是订阅剩余额度的读数。
 
 ## 安装
 
-1. 从 [Releases](../../releases/latest) 下载 `Meter-Beater-<版本>-macOS-universal.zip`。
+1. 从 [meter-beater.app.space](https://meter-beater.app.space/) 或 [Releases](../../releases/latest) 下载 **v1.1.3**。
 2. 解压，把 **Meter Beater.app** 拖进「应用程序」。
 3. 打开它，在菜单栏找 ✂️——要是没看到，那是菜单栏太挤、图标被刘海吞了，请驱逐一个你没那么爱的图标，给羊腾个位置。
 
@@ -44,10 +44,10 @@ shasum -a 256 -c SHA256SUMS
 
 ## 从源码构建
 
-完整应用、计费引擎、测试、基准工具、发布脚本和营销图片渲染器均在本仓库中，采用 MIT 许可证。构建需要 macOS 15 或更高版本，以及支持 Swift 6 的 Xcode。
+完整应用、计费引擎、测试、基准工具、发布脚本和营销图片渲染器均在本仓库中，采用 MIT 许可证。构建需要 macOS 15 或更高版本，以及支持 Swift 6 的 Xcode 或 Command Line Tools。
 
 ```sh
-swift test -Xswiftc -warnings-as-errors
+scripts/test.sh
 swift run AIUsageTracker
 scripts/package-app.sh
 ```
@@ -55,6 +55,8 @@ scripts/package-app.sh
 打包脚本会生成供本地测试的临时签名通用应用和 ZIP。正式下载版本使用 Developer ID 签名并经过 Apple 公证；详见 [`docs/RELEASING.md`](docs/RELEASING.md)。
 
 计数和定价规则见 [`docs/ACCOUNTING.md`](docs/ACCOUNTING.md)。
+
+v1.1.3 新增 Astra、Fable 5.1 和 Mythos 5.1 定价，并修正历史费率。关闭菜单栏面板时，装饰动画停止运行，但后台用量刷新仍然保留。详情见[发布说明](RELEASE_NOTES.md)。
 
 ## 隐私
 

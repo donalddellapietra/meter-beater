@@ -12,6 +12,7 @@ struct WoolPanel: View {
     @State private var shearBurst = 0
     @State private var confettiBurst = 0
     @State private var meterArmed = false
+    @State private var panelIsActive = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openSettings) private var openSettings
@@ -40,31 +41,44 @@ struct WoolPanel: View {
                     endPoint: .bottom
                 )
                 .opacity(colorScheme == .dark ? 0.5 : 0.38)
+
+                PanelActivityReader(isActive: $panelIsActive)
+                    .frame(width: 0, height: 0)
             }
         }
-        .onAppear {
+        .onChange(of: panelIsActive) { _, isActive in
+            guard isActive else {
+                meterArmed = false
+                return
+            }
+            model.panelBecameActive()
             celebrateWoolMilestone()
-            if !reduceMotion { shearBurst += 1 }
+            if panelAnimationsEnabled { shearBurst += 1 }
         }
-        .task {
-            guard !meterArmed else { return }
-            guard !reduceMotion else {
+        .task(id: panelIsActive) {
+            guard panelIsActive else { return }
+            guard panelAnimationsEnabled else {
                 meterArmed = true
                 return
             }
             try? await Task.sleep(for: .milliseconds(180))
+            guard !Task.isCancelled, panelIsActive else { return }
             withAnimation(.smooth(duration: 0.9)) { meterArmed = true }
         }
-        .onChange(of: model.summary.apiUSD) { _, _ in celebrateWoolMilestone() }
+        .onChange(of: model.summary.apiUSD) { _, _ in
+            if panelIsActive { celebrateWoolMilestone() }
+        }
         .onChange(of: model.isRefreshing) { _, isRefreshing in
-            if isRefreshing, !reduceMotion { shearBurst += 1 }
+            if isRefreshing, panelAnimationsEnabled { shearBurst += 1 }
         }
     }
 
     private var header: some View {
         HStack(spacing: 11) {
             SheepFaceBadge(wiggleTrigger: shearBurst)
-                .overlay { WoolPuffBurst(trigger: shearBurst) }
+                .overlay {
+                    if panelIsActive { WoolPuffBurst(trigger: shearBurst) }
+                }
 
             Text(copy.appName)
                 .font(.system(size: 16, weight: .semibold))
@@ -84,7 +98,7 @@ struct WoolPanel: View {
 
     private var liveIndicator: some View {
         HStack(spacing: 6) {
-            if showsLoading {
+            if showsLoading && panelIsActive {
                 ProgressView()
                     .controlSize(.mini)
             } else {
@@ -106,7 +120,7 @@ struct WoolPanel: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(WoolPalette.charcoal.opacity(0.7))
                 Spacer(minLength: 4)
-                CompactDateRangeControl(model: model)
+                CompactDateRangeControl(model: model, allowsAnimatedActivity: panelAnimationsEnabled)
             }
 
             meterDisplay
@@ -123,7 +137,9 @@ struct WoolPanel: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { WoolCard(cornerRadius: 20) }
-        .overlay { WoolConfetti(trigger: confettiBurst) }
+        .overlay {
+            if panelIsActive { WoolConfetti(trigger: confettiBurst) }
+        }
     }
 
     /// The fleece meter from the icon: green digits on a dark display, rolling
@@ -136,7 +152,7 @@ struct WoolPanel: View {
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .contentTransition(.numericText(value: model.summary.apiUSD))
-            .animation(reduceMotion ? nil : .smooth(duration: 0.65), value: WoolFormat.heroValue(model.summary))
+            .animation(panelAnimationsEnabled ? .smooth(duration: 0.65) : nil, value: WoolFormat.heroValue(model.summary))
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
@@ -166,7 +182,7 @@ struct WoolPanel: View {
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                         .foregroundStyle(WoolPalette.lcdGlow)
                         .contentTransition(.numericText(value: multiplier))
-                        .animation(reduceMotion ? nil : .smooth(duration: 0.5), value: multiplier)
+                        .animation(panelAnimationsEnabled ? .smooth(duration: 0.5) : nil, value: multiplier)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(WoolPalette.lcdBackground, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
@@ -202,7 +218,7 @@ struct WoolPanel: View {
                 .monospacedDigit()
                 .foregroundStyle(WoolPalette.charcoal)
                 .contentTransition(.numericText())
-                .animation(reduceMotion ? nil : .smooth(duration: 0.5), value: value)
+                .animation(panelAnimationsEnabled ? .smooth(duration: 0.5) : nil, value: value)
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(WoolPalette.charcoal.opacity(0.7))
@@ -219,7 +235,7 @@ struct WoolPanel: View {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(WoolPalette.burn)
-                    .symbolEffect(.breathe, isActive: !reduceMotion)
+                    .symbolEffect(.breathe, isActive: panelAnimationsEnabled)
                     .frame(width: 28, height: 28)
                     .background(WoolPalette.burn.opacity(0.12), in: Circle())
 
@@ -246,7 +262,7 @@ struct WoolPanel: View {
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundStyle(WoolPalette.burnGlow)
                     .contentTransition(.numericText(value: estimate.midpointUSD))
-                    .animation(reduceMotion ? nil : .smooth(duration: 0.5), value: estimate.midpointUSD)
+                    .animation(panelAnimationsEnabled ? .smooth(duration: 0.5) : nil, value: estimate.midpointUSD)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(WoolPalette.lcdBackground, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -278,7 +294,12 @@ struct WoolPanel: View {
             .background { WoolCard() }
         } else if !model.hasLoadedSummary || model.summary.usage.totalTokens > 0 {
             HStack(spacing: 9) {
-                ProgressView().controlSize(.mini)
+                if panelIsActive {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 9, weight: .semibold))
+                }
                 Text(model.hasLoadedSummary ? copy.pricingUsage : copy.readingLedger)
                     .font(.caption)
                     .foregroundStyle(WoolPalette.charcoal.opacity(0.72))
@@ -293,7 +314,7 @@ struct WoolPanel: View {
                 Text("🐑")
                     .font(.system(size: 13))
                 Image(systemName: "zzz")
-                    .symbolEffect(.variableColor.iterative.reversing, isActive: !reduceMotion)
+                    .symbolEffect(.variableColor.iterative.reversing, isActive: panelAnimationsEnabled)
                     .foregroundStyle(WoolPalette.charcoal.opacity(0.72))
                 Text(copy.emptyState)
                     .font(.caption)
@@ -345,7 +366,7 @@ struct WoolPanel: View {
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundStyle(WoolPalette.lcdGlow)
                     .contentTransition(.numericText(value: row.apiUSD))
-                    .animation(reduceMotion ? nil : .smooth(duration: 0.5), value: row.apiUSD)
+                    .animation(panelAnimationsEnabled ? .smooth(duration: 0.5) : nil, value: row.apiUSD)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(WoolPalette.lcdBackground, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -354,7 +375,7 @@ struct WoolPanel: View {
                     .foregroundStyle(WoolPalette.charcoal.opacity(0.7))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                    .animation(reduceMotion ? nil : .smooth(duration: 0.5), value: row.tokens)
+                    .animation(panelAnimationsEnabled ? .smooth(duration: 0.5) : nil, value: row.tokens)
             }
         }
         .padding(.vertical, 9)
@@ -405,7 +426,7 @@ struct WoolPanel: View {
                 model.refresh()
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .symbolEffect(.rotate, options: .repeat(.continuous), isActive: showsRefreshLoading && !reduceMotion)
+                    .symbolEffect(.rotate, options: .repeat(.continuous), isActive: showsRefreshLoading && panelAnimationsEnabled)
                     .frame(width: 24, height: 22)
             }
             .buttonStyle(.plain)
@@ -479,6 +500,10 @@ struct WoolPanel: View {
 
     private var showsRefreshLoading: Bool {
         forceLoading || model.isRefreshing
+    }
+
+    private var panelAnimationsEnabled: Bool {
+        panelIsActive && !reduceMotion
     }
 
     /// The Settings window of an LSUIElement app opens behind the frontmost
@@ -599,7 +624,7 @@ struct WoolPanel: View {
         }
         let stored = defaults.integer(forKey: defaultsKey)
         if floor != stored { defaults.set(floor, forKey: defaultsKey) }
-        if floor > stored, !reduceMotion { confettiBurst += 1 }
+        if floor > stored, panelAnimationsEnabled { confettiBurst += 1 }
     }
 
     private func milestoneKey(_ range: UsageDateRange) -> String? {
@@ -615,6 +640,84 @@ struct WoolPanel: View {
     }
 
     private var copy: AppCopy { model.copy }
+}
+
+/// SwiftUI keeps a window-style MenuBarExtra mounted after it is ordered out.
+/// Observe the actual AppKit window so hidden panel content cannot keep a
+/// display link alive for decorative animations and indeterminate progress.
+private struct PanelActivityReader: NSViewRepresentable {
+    @Binding var isActive: Bool
+
+    func makeNSView(context: Context) -> PanelActivityView {
+        let view = PanelActivityView()
+        installHandler(on: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: PanelActivityView, context: Context) {
+        installHandler(on: nsView)
+        nsView.publishCurrentState()
+    }
+
+    static func dismantleNSView(_ nsView: PanelActivityView, coordinator: Void) {
+        nsView.stopObserving()
+    }
+
+    private func installHandler(on view: PanelActivityView) {
+        let binding = _isActive
+        view.onChange = { active in
+            guard binding.wrappedValue != active else { return }
+            binding.wrappedValue = active
+        }
+    }
+}
+
+private final class PanelActivityView: NSView {
+    var onChange: ((Bool) -> Void)?
+    private weak var observedWindow: NSWindow?
+    private var lastPublishedState = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard observedWindow !== window else {
+            publishCurrentState()
+            return
+        }
+
+        stopObserving()
+        observedWindow = window
+        guard let window else { return }
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(windowStateChanged), name: NSWindow.didBecomeKeyNotification, object: window)
+        center.addObserver(self, selector: #selector(windowStateChanged), name: NSWindow.didResignKeyNotification, object: window)
+        center.addObserver(self, selector: #selector(windowStateChanged), name: NSWindow.didChangeOcclusionStateNotification, object: window)
+        publishCurrentState()
+    }
+
+    func publishCurrentState() {
+        let active = observedWindow.map {
+            $0.isVisible && $0.isKeyWindow && $0.occlusionState.contains(.visible)
+        } ?? false
+        guard active != lastPublishedState else { return }
+        lastPublishedState = active
+        onChange?(active)
+    }
+
+    func stopObserving() {
+        NotificationCenter.default.removeObserver(self)
+        observedWindow = nil
+        guard lastPublishedState else { return }
+        lastPublishedState = false
+        onChange?(false)
+    }
+
+    @objc private func windowStateChanged(_ notification: Notification) {
+        publishCurrentState()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 }
 
 /// The icon's sheep face rebuilt in SwiftUI shapes: charcoal head, wool cap,

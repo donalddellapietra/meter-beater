@@ -6,6 +6,7 @@ import UsageCore
 struct WoolSnapshotCache {
     struct Value: Codable, Sendable {
         let schemaVersion: Int
+        let pricingSnapshotDate: String?
         let sourceIDs: Set<String>
         let updatedAt: Date
         let summary: UsageSummary
@@ -18,6 +19,7 @@ struct WoolSnapshotCache {
               let data = try? Data(contentsOf: cacheURL()),
               let cached = try? JSONDecoder().decode(Value.self, from: data),
               cached.schemaVersion == schemaVersion,
+              cached.pricingSnapshotDate == PricingCatalog.snapshotDate,
               cached.sourceIDs == sourceIDs,
               cached.summary.eventCount > 0 else { return nil }
         return cached
@@ -37,6 +39,7 @@ struct WoolSnapshotCache {
 
         let value = Value(
             schemaVersion: schemaVersion,
+            pricingSnapshotDate: PricingCatalog.snapshotDate,
             sourceIDs: sourceIDs,
             updatedAt: updatedAt,
             summary: snapshot

@@ -71,8 +71,6 @@ final class WoolModel {
     @ObservationIgnored private var displayedDateRange: UsageDateRange?
     @ObservationIgnored private var securityScopesToStop = Set<String>()
     @ObservationIgnored private var activeSecurityScopedURLs: [String: URL] = [:]
-    @ObservationIgnored private var watcherUsesPollingFallback = false
-
     private static let sourcesKey = "AIUsageTracker.sources"
     private static let codexServingCostKey = "AIUsageTracker.servingCost.codex"
     private static let claudeServingCostKey = "AIUsageTracker.servingCost.claude"
@@ -88,6 +86,8 @@ final class WoolModel {
     private static let fileQuietPeriod = Duration.seconds(8)
     private static let fileMaximumLatency = Duration.seconds(60)
     private static let queuedRefreshDelay = Duration.seconds(5)
+    private static let safetyRefreshInterval = Duration.seconds(300)
+    private static let panelRefreshMaximumAge: TimeInterval = 60
 
     private struct RefreshIntent: Sendable {
         /// Nil requests a bounded check of all enabled roots. A path set is a
@@ -162,12 +162,15 @@ final class WoolModel {
             onChange: { [weak self] paths in
                 Task { @MainActor [weak self] in self?.providerFilesChanged(paths: paths) }
             },
-            onFailure: { [weak self] in
-                Task { @MainActor [weak self] in self?.enablePollingFallback() }
+            onRescanRequired: { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.requestRefresh(RefreshIntent(changedPaths: nil))
+                }
             }
         )
         saveSources()
         updateFileWatcher()
+        startSafetyRefreshes()
 
         startupTask = Task { @MainActor [weak self] in
             // Let AppKit install the status item before any archive or SQLite IO.
@@ -199,6 +202,14 @@ final class WoolModel {
 
     func refresh() {
         canRetryTimedOutRefresh = true
+        requestRefresh(RefreshIntent(changedPaths: nil))
+    }
+
+    func panelBecameActive() {
+        guard !isRefreshing else { return }
+        guard lastRefresh.map({ Date().timeIntervalSince($0) >= Self.panelRefreshMaximumAge }) ?? true else {
+            return
+        }
         requestRefresh(RefreshIntent(changedPaths: nil))
     }
 
@@ -593,13 +604,10 @@ final class WoolModel {
         refreshedAt: Date
     ) {
         if value != summary {
-            // Animate so the meter digits roll instead of snapping — unless
-            // the user has asked the system to reduce motion.
-            if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-                summary = value
-            } else {
-                withAnimation(.smooth(duration: 0.65)) { summary = value }
-            }
+            // Views opt into transitions only while their window is active.
+            // Publishing a global animation transaction would keep a hidden
+            // MenuBarExtra rendering after its panel has closed.
+            summary = value
         }
         displayedSourceIDs = sourceIDs
         displayedDateRange = dateRange
@@ -751,12 +759,14 @@ final class WoolModel {
         }
     }
 
-    private func enablePollingFallback() {
-        guard !watcherUsesPollingFallback else { return }
-        watcherUsesPollingFallback = true
+    private func startSafetyRefreshes() {
+        guard pollingTask == nil else { return }
         pollingTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(300))
+                // FSEvents normally provides prompt, path-scoped updates. Keep
+                // this low-frequency reconciliation running as a correctness
+                // backstop for dropped events and streams lost after wake.
+                try? await Task.sleep(for: Self.safetyRefreshInterval)
                 guard !Task.isCancelled, let self else { return }
                 self.requestRefresh(RefreshIntent(changedPaths: nil))
             }

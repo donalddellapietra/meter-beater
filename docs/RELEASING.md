@@ -15,7 +15,7 @@ Update `CFBundleShortVersionString` and `CFBundleVersion` in
 From a clean checkout:
 
 ```sh
-swift test -Xswiftc -warnings-as-errors
+scripts/test.sh
 git diff --check
 scripts/package-app.sh
 file "dist/Meter Beater.app/Contents/MacOS/AIUsageTracker"
@@ -34,20 +34,22 @@ from an App Store Connect API key (the `.p8` stays outside this repo):
 
 ```sh
 xcrun notarytool store-credentials meter-beater-notary \
-  --key <path to AuthKey_XXXXXXXXXX.p8> --key-id <KEY_ID> --issuer <ISSUER_UUID>
+  --key <path to AuthKey_XXXXXXXXXX.p8> --key-id <KEY_ID> --issuer <ISSUER_UUID> \
+  --keychain "$HOME/Library/Keychains/login.keychain-db"
 ```
 
 Verify it at any time with
-`xcrun notarytool history --keychain-profile meter-beater-notary`.
+`xcrun notarytool history --keychain-profile meter-beater-notary --keychain "$HOME/Library/Keychains/login.keychain-db"`.
 
 ## 4. Build the distribution artifact
 
 The signing identity for this app is
-`Developer ID Application: Eudaimonic Inc (C2RN7J79X9)`.
+`Developer ID Application: Donald Della Pietra (G6YPR6W328)`.
 
 ```sh
-export SIGNING_IDENTITY="Developer ID Application: Eudaimonic Inc (C2RN7J79X9)"
+export SIGNING_IDENTITY="Developer ID Application: Donald Della Pietra (G6YPR6W328)"
 export NOTARY_KEYCHAIN_PROFILE="meter-beater-notary"
+export NOTARY_KEYCHAIN_PATH="$HOME/Library/Keychains/login.keychain-db"
 scripts/notarize-app.sh
 ```
 

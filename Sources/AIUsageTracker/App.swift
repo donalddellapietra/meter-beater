@@ -28,7 +28,6 @@ struct AIUsageTrackerApp: App {
                 Text(model.hasLoadedSummary ? WoolFormat.menuValue(model.summary) : "…")
                     .monospacedDigit()
                     .contentTransition(.numericText(value: model.summary.apiUSD))
-                    .animation(.smooth(duration: 0.6), value: WoolFormat.menuValue(model.summary))
             }
         }
         .menuBarExtraStyle(.window)

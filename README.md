@@ -24,11 +24,11 @@
 
 ## "Doesn't Claude Code already do this?"
 
-`/cost` tells you what's eating your rate limit over the last 7 days, and — because you're on a subscription — carefully shows you no dollars at all. Codex's `/status` counts the session you're sitting in. Neither will tell you what the whole thing was worth, and neither has heard of the other. That's this.
+Meter Beater combines locally recorded usage from both tools into one menu-bar total, priced at public API rates. No account connection or API key is required. It is a cross-provider dollar comparison, not a reading of either subscription's remaining allowance.
 
 ## Install
 
-1. Download `Meter-Beater-<version>-macOS-universal.zip` from [Releases](../../releases/latest).
+1. Download **v1.1.3** from [meter-beater.app.space](https://meter-beater.app.space/) or [Releases](../../releases/latest).
 2. Unzip and drag **Meter Beater.app** into Applications.
 3. Open it and look for the ✂️ in your menu bar — if there's no sheep, your menu bar is overcrowded and macOS quietly hid it, so evict an icon you love less.
 
@@ -46,10 +46,10 @@ shasum -a 256 -c SHA256SUMS
 
 The complete app, accounting engine, tests, benchmark, release scripts, and
 marketing renderer live in this repository under the MIT License. You need
-macOS 15 or later and Xcode with Swift 6 support.
+macOS 15 or later and Xcode or Command Line Tools with Swift 6 support.
 
 ```sh
-swift test -Xswiftc -warnings-as-errors
+scripts/test.sh
 swift run AIUsageTracker
 scripts/package-app.sh
 ```
@@ -60,6 +60,10 @@ see [`docs/RELEASING.md`](docs/RELEASING.md).
 
 The accounting and pricing contract is documented in
 [`docs/ACCOUNTING.md`](docs/ACCOUNTING.md).
+
+Version 1.1.3 includes Astra, Fable 5.1, and Mythos 5.1 pricing, plus historical
+rate corrections. Background refresh remains enabled while decorative effects
+sleep whenever the menu-bar panel is closed. See [release notes](RELEASE_NOTES.md).
 
 ## Privacy
 

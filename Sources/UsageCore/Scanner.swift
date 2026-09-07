@@ -127,7 +127,9 @@ struct EventRollupAccumulator {
         usage: TokenUsage,
         pricingContext: APIPricingContext = APIPricingContext()
     ) {
-        let day = day(containing: timestamp)
+        // A local calendar day can span a UTC pricing boundary. Split there
+        // before adding tokens so historical rates survive compact storage.
+        let day = max(day(containing: timestamp), PricingCatalog.pricingPeriodStart(at: timestamp))
         let key = Key(
             provider: provider,
             sourceID: sourceID,

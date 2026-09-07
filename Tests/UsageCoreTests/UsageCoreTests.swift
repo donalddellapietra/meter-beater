@@ -1097,23 +1097,24 @@ func claudePricing() {
     #expect(PricingCatalog.estimate(TokenUsage(outputTokens: 1_000_000), provider: .claude, model: "claude-sonnet-4-20250514", at: Date()).apiUSD == 15)
 }
 
-@Test("Sonnet 5 pricing changes at the published cutoff")
+@Test("Sonnet 5 keeps its introductory price after the cancelled increase")
 func sonnet5PricingTransition() {
-    let before = PricingCatalog.estimate(TokenUsage(outputTokens: 1_000_000), provider: .claude, model: "claude-sonnet-5", at: Date(timeIntervalSince1970: PricingCatalog.sonnet5RateChange.timeIntervalSince1970 - 1))
-    let after = PricingCatalog.estimate(TokenUsage(outputTokens: 1_000_000), provider: .claude, model: "claude-sonnet-5", at: Date(timeIntervalSince1970: PricingCatalog.sonnet5RateChange.timeIntervalSince1970 + 1))
+    let cutoff = DateParsing.parse("2026-09-01T00:00:00Z")!
+    let before = PricingCatalog.estimate(TokenUsage(outputTokens: 1_000_000), provider: .claude, model: "claude-sonnet-5", at: cutoff.addingTimeInterval(-1))
+    let after = PricingCatalog.estimate(TokenUsage(outputTokens: 1_000_000), provider: .claude, model: "claude-sonnet-5", at: cutoff.addingTimeInterval(1))
     #expect(before.apiUSD == 10)
-    #expect(after.apiUSD == 15)
+    #expect(after.apiUSD == 10)
 }
 
 @Test("Current Codex Terra and Luna rates match the published cards")
 func currentCodexRates() {
     let usage = TokenUsage(inputTokens: 1_000_000, cachedInputTokens: 1_000_000, outputTokens: 1_000_000)
     let terra = PricingCatalog.estimate(usage, provider: .codex, model: "gpt-5.6-terra", at: Date())
-    #expect(abs((terra.apiUSD ?? 0) - 17.75) < 0.0001)
+    #expect(abs((terra.apiUSD ?? 0) - 14.2) < 0.0001)
     #expect(abs((terra.codexCredits ?? 0) - 355) < 0.0001)
 
     let luna = PricingCatalog.estimate(usage, provider: .codex, model: "gpt-5.6-luna", at: Date())
-    #expect(abs((luna.apiUSD ?? 0) - 7.1) < 0.0001)
+    #expect(abs((luna.apiUSD ?? 0) - 1.42) < 0.0001)
     #expect(abs((luna.codexCredits ?? 0) - 35.5) < 0.0001)
 }
 
@@ -1127,11 +1128,11 @@ func codexLongContextPricing() {
         model: "gpt-5.6-sol",
         at: Date()
     )
-    #expect(abs((quote.apiCost?.uncachedInputUSD ?? 0) - 1.0) < 0.000001)
-    #expect(abs((quote.apiCost?.cachedInputUSD ?? 0) - 0.2) < 0.000001)
-    #expect(abs((quote.apiCost?.outputUSD ?? 0) - 0.45) < 0.000001)
-    #expect(abs((quote.apiUSD ?? 0) - 1.65) < 0.000001)
-    #expect(abs((quote.codexCredits ?? 0) - 22.5) < 0.000001)
+    #expect(abs((quote.apiCost?.uncachedInputUSD ?? 0) - 0.8) < 0.000001)
+    #expect(abs((quote.apiCost?.cachedInputUSD ?? 0) - 0.16) < 0.000001)
+    #expect(abs((quote.apiCost?.outputUSD ?? 0) - 0.3) < 0.000001)
+    #expect(abs((quote.apiUSD ?? 0) - 1.26) < 0.000001)
+    #expect(abs((quote.codexCredits ?? 0) - 17) < 0.000001)
 }
 
 @Test("Codex scanner attributes each request to its turn model")
@@ -1268,7 +1269,7 @@ func servingCostEstimateUsesProviderMargins() {
     #expect(ServingCostCatalog.defaultMidpointRatio(for: .claude) == 0.525)
 }
 
-@Test("Indexed summaries apply date-sensitive pricing per bucket")
+@Test("Indexed summaries do not apply the cancelled Sonnet 5 price increase")
 func indexedPricingTransition() throws {
     let root = try makeRoot()
     defer { try? FileManager.default.removeItem(at: root) }
@@ -1280,7 +1281,7 @@ func indexedPricingTransition() throws {
     let db = try SQLiteIndexStore(url: root.appendingPathComponent("index.sqlite"))
     let source = UsageSource(displayName: "test", provider: .claude, rootPath: root.path)
     _ = db.refresh(sources: [source])
-    #expect(abs(db.summary().apiUSD - 25) < 0.001)
+    #expect(abs(db.summary().apiUSD - 20) < 0.001)
 }
 
 @Test("Unterminated JSONL tail is re-read after append")

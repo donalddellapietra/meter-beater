@@ -3,6 +3,7 @@ import UsageCore
 
 struct CompactDateRangeControl: View {
     @Bindable var model: WoolModel
+    let allowsAnimatedActivity: Bool
     @State private var isPresented = false
 
     private var selection: UsageDateRange { model.dateRange }
@@ -19,7 +20,7 @@ struct CompactDateRangeControl: View {
                 Text(copy.dateRangeLabel(selection, calendar: localizedCalendar))
                     .font(.caption2.weight(.medium))
                     .lineLimit(1)
-                if isLoading {
+                if isLoading && allowsAnimatedActivity {
                     ProgressView()
                         .controlSize(.mini)
                 } else {

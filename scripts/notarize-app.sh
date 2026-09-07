@@ -21,9 +21,11 @@ archive_name="Meter-Beater-${version}-macOS-universal.zip"
 archive_path="$repo_root/dist/$archive_name"
 checksum_path="$repo_root/dist/SHA256SUMS"
 
-xcrun notarytool submit "$archive_path" \
-  --keychain-profile "$NOTARY_KEYCHAIN_PROFILE" \
-  --wait
+notarytool_arguments=(--keychain-profile "$NOTARY_KEYCHAIN_PROFILE")
+if [[ -n "${NOTARY_KEYCHAIN_PATH:-}" ]]; then
+  notarytool_arguments+=(--keychain "$NOTARY_KEYCHAIN_PATH")
+fi
+xcrun notarytool submit "$archive_path" "${notarytool_arguments[@]}" --wait
 xcrun stapler staple "$app_path"
 xcrun stapler validate "$app_path"
 spctl --assess --type execute --verbose=4 "$app_path"

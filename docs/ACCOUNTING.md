@@ -39,11 +39,19 @@ Codex transcripts contain cumulative `total_token_usage` snapshots and usually a
 
 ## Request-level pricing rules
 
-- GPT-5.4, GPT-5.5, and GPT-5.6 requests above 272,000 input tokens receive the documented 2× input and 1.5× output public-API multipliers for the full request. The premium is applied only when explicit request counters prove that the threshold was crossed; cumulative-only fallback rows do not guess.
-- GPT-5.6 cache creation is priced at 1.25× uncached input for API-equivalent dollars. The current local Codex corpus reports no positive cache-write counters.
+- GPT-5.4, GPT-5.5, GPT-5.6, and GPT-6 Astra requests above 272,000 input tokens receive the documented 2× input and 1.5× output public-API multipliers for the full request. The premium is applied only when explicit request counters prove that the threshold was crossed; cumulative-only fallback rows do not guess.
+- GPT-5.6 and GPT-6 Astra cache creation is priced at 1.25× uncached input for API-equivalent dollars.
 - Codex credits use OpenAI's separate token-based credit rate card. API long-context premiums are not copied into credits, and Codex cache writes consume no credits unless the credit card later documents otherwise.
 - Fast mode, tool-call fees, data-residency premiums, Batch/Flex discounts, and other modifiers are not inferred because local transcript counters do not reliably establish them.
 - Unknown models and GPT-5.3-Codex-Spark remain unpriced rather than borrowing another model's rate.
+
+## 2026-09-05 pricing snapshot
+
+The catalog explicitly recognizes GPT-6 Astra, Claude Fable 5.1, and Claude Mythos 5.1. Fable/Mythos 5.1 cache reads cost $0.25 per million tokens, while version 5 retains its $1 rate. Only exact model IDs and dated snapshots inherit a known rate; unknown versions and variants remain unpriced.
+
+GPT-5.6 Terra and Luna use their reduced API prices from July 30, 2026. Sol uses its reduced API and Codex-credit prices from August 21, 2026. Earlier usage retains the earlier rates. Provider announcements specify dates without an effective clock time, so the implementation uses UTC midnight. No automatic end date is assumed for Sol's promotion. Sonnet 5's cancelled September increase is not applied.
+
+All summaries split aggregates at pricing boundaries. Cache accounting generation 7 retains existing data and schedules only affected Astra transcripts and GPT-5.6 rollups for replay. Saved first-frame dollar snapshots are invalidated when the pricing snapshot changes. The release is covered by 63 Swift tests, including historical rates, unknown model IDs, and targeted cache migrations.
 
 ## 2026-08-03 local corpus audit
 
@@ -69,7 +77,9 @@ The Codex result landing near the user's initial $25–30K intuition is incident
 
 The active rate snapshot is dated in `PricingCatalog.snapshotDate`. Current primary sources:
 
-- [OpenAI model pricing](https://developers.openai.com/api/docs/models)
+- [OpenAI API pricing](https://developers.openai.com/api/docs/pricing)
+- [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra)
+- [GPT-5.6 price-change announcements](https://openai.com/index/gpt-5-6/)
 - [OpenAI Codex rate card](https://help.openai.com/en/articles/20001106-codex-rate-card)
 - [Anthropic Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing)
 

@@ -9,13 +9,23 @@ if [[ "$configuration" != "release" && "$configuration" != "debug" ]]; then
   exit 2
 fi
 
-build_arguments=(-c "$configuration" --product AIUsageTracker)
+binary_paths=()
 if [[ "$configuration" == "release" && "${UNIVERSAL_BUILD:-1}" != "0" ]]; then
-  build_arguments+=(--arch arm64 --arch x86_64)
+  # SwiftPM's combined multi-architecture build requires XCBuild, which is not
+  # included with the standalone Command Line Tools. Build each slice with the
+  # native build system so a universal release does not require full Xcode.
+  for architecture in arm64 x86_64; do
+    build_arguments=(-c "$configuration" --product AIUsageTracker --arch "$architecture")
+    swift build "${build_arguments[@]}"
+    bin_path="$(swift build "${build_arguments[@]}" --show-bin-path)"
+    binary_paths+=("$bin_path/AIUsageTracker")
+  done
+else
+  build_arguments=(-c "$configuration" --product AIUsageTracker)
+  swift build "${build_arguments[@]}"
+  bin_path="$(swift build "${build_arguments[@]}" --show-bin-path)"
+  binary_paths+=("$bin_path/AIUsageTracker")
 fi
-
-swift build "${build_arguments[@]}"
-bin_path="$(swift build "${build_arguments[@]}" --show-bin-path)"
 if [[ "$configuration" == "debug" ]]; then
   app_path="$repo_root/dist/Meter Beater Debug.app"
 else
@@ -23,7 +33,11 @@ else
 fi
 rm -rf "$app_path"
 mkdir -p "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
-cp "$bin_path/AIUsageTracker" "$app_path/Contents/MacOS/AIUsageTracker"
+if (( ${#binary_paths[@]} == 1 )); then
+  cp "${binary_paths[1]}" "$app_path/Contents/MacOS/AIUsageTracker"
+else
+  lipo -create "${binary_paths[@]}" -output "$app_path/Contents/MacOS/AIUsageTracker"
+fi
 cp "$repo_root/Resources/Info.plist" "$app_path/Contents/Info.plist"
 cp "$repo_root/Resources/AppIcon.icns" "$app_path/Contents/Resources/AppIcon.icns"
 for localization in "$repo_root"/Resources/*.lproj; do
