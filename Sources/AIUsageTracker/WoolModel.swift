@@ -206,6 +206,7 @@ final class WoolModel {
     }
 
     func panelBecameActive() {
+        refreshDateWindow()
         guard !isRefreshing else { return }
         guard lastRefresh.map({ Date().timeIntervalSince($0) >= Self.panelRefreshMaximumAge }) ?? true else {
             return
@@ -351,6 +352,16 @@ final class WoolModel {
         if let data = try? JSONEncoder().encode(range) {
             UserDefaults.standard.set(data, forKey: Self.dateRangeKey)
         }
+        scheduleDateQuery()
+    }
+
+    /// A cached SQL read only: no transcript scan and no animation timer.
+    func refreshDateWindow() {
+        guard dateRange.movesWithTime, !isDateQuerying else { return }
+        scheduleDateQuery()
+    }
+
+    private func scheduleDateQuery() {
         dateQueryRevision &+= 1
         let revision = dateQueryRevision
         dateQueryTask?.cancel()
@@ -438,6 +449,7 @@ final class WoolModel {
     private static func loadDateRange() -> UsageDateRange {
 #if DEBUG
         switch ProcessInfo.processInfo.environment["AI_USAGE_TRACKER_DATE_RANGE"] {
+        case "last24": return .lastHours(24)
         case "last7": return .lastDays(7)
         case "last30": return .lastDays(30)
         case "ytd": return .yearToDate
@@ -495,10 +507,8 @@ final class WoolModel {
         let sourceIDs = enabledSourceIDs
         let revision = configurationRevision
         let selectedRange = dateRange
-        let interval = selectedRange.interval()
         var loaded = await indexService.compactSummary(UsageIndexQuery(
-            start: interval?.start,
-            end: interval?.end,
+            range: selectedRange,
             sourceIDs: sourceIDs
         ))
         let earliest = await indexService.earliestEventTimestamp(sourceIDs: sourceIDs)
@@ -548,13 +558,11 @@ final class WoolModel {
             // reports "still indexing" until a pass completes in time.
             if contextStillCurrent,
                result.failedFiles == 0 && (
-                needsCurrentContext || result.changedFiles > 0 || result.removedFiles > 0
+                needsCurrentContext || selectedRange.movesWithTime || result.changedFiles > 0 || result.removedFiles > 0
                     || result.metadataChanged || result.didReachTimeLimit
             ) {
-                let interval = selectedRange.interval()
                 var loaded = await indexService.compactSummary(UsageIndexQuery(
-                    start: interval?.start,
-                    end: interval?.end,
+                    range: selectedRange,
                     sourceIDs: sourceIDs
                 ))
                 let earliest = await indexService.earliestEventTimestamp(sourceIDs: sourceIDs)
@@ -619,8 +627,8 @@ final class WoolModel {
 
     /// Bounded thread snapshots are useful for an immediate processed-token
     /// headline, but they omit inherited child work and cannot preserve every
-    /// request's active model. Never present their dollar value as if it were
-    /// the accurate public-API equivalent.
+    /// request's active model. Legacy day rollups also cannot price precise
+    /// windows until replay completes. Never present either as exact pricing.
     private static func withholdingProvisionalPricing(_ value: UsageSummary) -> UsageSummary {
         guard value.isProvisional else { return value }
         var result = value

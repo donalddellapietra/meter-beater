@@ -28,7 +28,7 @@
 
 ## 安装
 
-1. 从 [meter-beater.app.space](https://meter-beater.app.space/) 或 [Releases](../../releases/latest) 下载 **v1.1.3**。
+1. 从 [meter-beater.app.space](https://meter-beater.app.space/) 或 [Releases](../../releases/latest) 下载 **v1.1.4**。
 2. 解压，把 **Meter Beater.app** 拖进「应用程序」。
 3. 打开它，在菜单栏找 ✂️——要是没看到，那是菜单栏太挤、图标被刘海吞了，请驱逐一个你没那么爱的图标，给羊腾个位置。
 
@@ -56,7 +56,7 @@ scripts/package-app.sh
 
 计数和定价规则见 [`docs/ACCOUNTING.md`](docs/ACCOUNTING.md)。
 
-v1.1.3 新增 Astra、Fable 5.1 和 Mythos 5.1 定价，并修正历史费率。关闭菜单栏面板时，装饰动画停止运行，但后台用量刷新仍然保留。详情见[发布说明](RELEASE_NOTES.md)。
+v1.1.4 将日期筛选分为「滚动」和「日历」两种模式，新增精确的「近 24 小时」，并在无需重新扫描记录的情况下移除窗口外的旧用量。包含 Astra、Fable 5.1 和 Mythos 5.1 定价。关闭菜单栏面板时，装饰动画停止运行，但后台用量刷新仍然保留。详情见[发布说明](RELEASE_NOTES.md)。
 
 ## 隐私
 

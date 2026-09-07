@@ -10,6 +10,15 @@ public struct UsageIndexQuery: Sendable, Hashable {
         self.end = end
         self.sourceIDs = sourceIDs
     }
+
+    public init(range: UsageDateRange, now: Date = Date(), sourceIDs: Set<String>? = nil) {
+        let interval = range.interval(now: now)
+        self.init(
+            start: interval?.start,
+            end: interval.map { range.movesWithTime ? min($0.end, now) : $0.end },
+            sourceIDs: sourceIDs
+        )
+    }
 }
 
 public struct UsageIndexRefreshRequest: Sendable {

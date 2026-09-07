@@ -1,10 +1,10 @@
 import Foundation
 
-/// Dashboard-level time windows. These are converted to half-open local-day
-/// intervals before querying SQLite, so an inclusive end date remains stable
-/// across daylight-saving transitions.
+/// Dashboard time windows. Rolling ranges use elapsed time ending now;
+/// calendar/custom ranges use half-open local-day boundaries.
 public enum UsageDateRange: Codable, Hashable, Sendable {
     case allTime
+    case lastHours(Int)
     case lastDays(Int)
     case yearToDate
     case custom(start: Date, end: Date)
@@ -22,6 +22,21 @@ public enum UsageDateRange: Codable, Hashable, Sendable {
         return false
     }
 
+    public var isRolling: Bool {
+        switch self {
+        case .lastHours, .lastDays: return true
+        default: return false
+        }
+    }
+
+    /// Time alone can change this range, even without new transcript events.
+    public var movesWithTime: Bool {
+        switch self {
+        case .allTime, .custom: return false
+        default: return true
+        }
+    }
+
     /// Billing-cycle and range math is pinned to the Gregorian calendar in the
     /// user's time zone, matching the index's Gregorian day keys. The system
     /// calendar (Buddhist, Islamic, …) only affects display formatting.
@@ -35,11 +50,10 @@ public enum UsageDateRange: Codable, Hashable, Sendable {
         switch self {
         case .allTime:
             return nil
+        case let .lastHours(hours):
+            return DateInterval(start: now.addingTimeInterval(-Double(max(1, hours)) * 3_600), end: now)
         case let .lastDays(requestedDays):
-            let endDay = calendar.startOfDay(for: now)
-            let start = calendar.date(byAdding: .day, value: -(max(1, requestedDays) - 1), to: endDay) ?? endDay
-            let end = calendar.date(byAdding: .day, value: 1, to: endDay) ?? now
-            return DateInterval(start: start, end: end)
+            return DateInterval(start: now.addingTimeInterval(-Double(max(1, requestedDays)) * 86_400), end: now)
         case .yearToDate:
             let today = calendar.startOfDay(for: now)
             let year = calendar.component(.year, from: today)

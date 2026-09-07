@@ -107,7 +107,7 @@ func summaryPricingPeriods() throws {
                                   model: event.model, sourcePath: "same-transcript",
                                   usage: event.usage, pricingContext: event.pricingContext))
     }
-    #expect(rollups.values.count == 6)
+    #expect(rollups.values.count == 9)
     #expect(abs(UsageAggregator.summarize(rollups.values).apiUSD - direct.apiUSD) < 0.000001)
 
     let url = root.appendingPathComponent("index.sqlite")
@@ -185,7 +185,7 @@ func pricingBoundaryCacheMigration() throws {
     #expect(result.warnings.isEmpty)
     #expect(result.changedFiles == 1)
     #expect(migrated.events().count == 2)
-    #expect(migrated.events().allSatisfy { $0.id.hasPrefix("rollup:") })
+    #expect(migrated.events().allSatisfy { $0.id.hasPrefix("rollup-v2:") })
     #expect(abs(migrated.compactSummary().apiUSD - 59.9) < 0.000001)
     #expect(migrated.refresh(sources: [source]).changedFiles == 0)
 }

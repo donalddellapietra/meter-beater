@@ -45,13 +45,34 @@ Codex transcripts contain cumulative `total_token_usage` snapshots and usually a
 - Fast mode, tool-call fees, data-residency premiums, Batch/Flex discounts, and other modifiers are not inferred because local transcript counters do not reliably establish them.
 - Unknown models and GPT-5.3-Codex-Spark remain unpriced rather than borrowing another model's rate.
 
+## Time-window semantics (1.1.4)
+
+Rolling ranges end at the query timestamp and include the start but exclude the
+end. Last 24 hours spans exactly 86,400 seconds; Last 7/30 days spans 7/30 times
+that duration, including across daylight-saving changes. Calendar periods start
+at local midnight or the configured week/month boundary; live queries stop at
+now. Custom ranges include both selected local calendar dates.
+
+Cache generation 8 replaces legacy Codex day aggregates with timestamp-preserving
+records. Existing totals remain available while the normal bounded refresh
+atomically replaces each affected file. Time-filtered pricing is provisional
+until coarse rows have been reconciled; unrelated event-mode files stay cached.
+Opening a moving range and each visible-panel minute re-query SQLite without
+rescanning transcripts. The existing five-minute safety refresh also updates
+time windows when no files changed. Hidden panels do not run the minute timer.
+
+Verification includes 75 Swift tests covering both provider adapters, half-open
+timestamp boundaries, DST, expiration without writes, and one-time cache replay.
+
 ## 2026-09-05 pricing snapshot
 
-The catalog explicitly recognizes GPT-6 Astra, Claude Fable 5.1, and Claude Mythos 5.1. Fable/Mythos 5.1 cache reads cost $0.25 per million tokens, while version 5 retains its $1 rate. Only exact model IDs and dated snapshots inherit a known rate; unknown versions and variants remain unpriced.
+The catalog now explicitly recognizes GPT-6 Astra, Claude Fable 5.1, and Claude Mythos 5.1. Fable/Mythos 5.1 cache reads cost $0.25 per million tokens, while version 5 retains its $1 rate. Only exact model IDs and dated snapshots inherit a known rate; an unrecognized newer version or variant cannot silently fall back to an older model.
 
-GPT-5.6 Terra and Luna use their reduced API prices from July 30, 2026. Sol uses its reduced API and Codex-credit prices from August 21, 2026. Earlier usage retains the earlier rates. Provider announcements specify dates without an effective clock time, so the implementation uses UTC midnight. No automatic end date is assumed for Sol's promotion. Sonnet 5's cancelled September increase is not applied.
+GPT-5.6 Terra and Luna use their reduced API prices from July 30, 2026. Sol uses its reduced API and Codex-credit prices from August 21, 2026. Earlier usage retains the earlier rates. Provider announcements specify calendar dates but no effective clock time, so the implementation consistently uses UTC midnight. No automatic end date is assumed for Sol's promotion. Anthropic cancelled Sonnet 5's scheduled September 1 increase; its $2 input / $10 output rates remain in effect.
 
-All summaries split aggregates at pricing boundaries. Cache accounting generation 7 retains existing data and schedules only affected Astra transcripts and GPT-5.6 rollups for replay. Saved first-frame dollar snapshots are invalidated when the pricing snapshot changes. The release is covered by 63 Swift tests, including historical rates, unknown model IDs, and targeted cache migrations.
+Every summary path splits aggregates at these pricing boundaries, including when a local day spans UTC midnight. Cache accounting generation 7 retains existing data and schedules only Astra transcripts and GPT-5.6 rollups near those boundaries for replay. This repairs missing Astra long-context classification and previously merged historical periods without rebuilding unaffected files. Saved first-frame dollar snapshots are invalidated when the pricing snapshot changes.
+
+Verification passed all 63 Swift fixtures and warning-free Apple Silicon and Intel release builds. Rate-boundary tests also passed in UTC, in addition to the development Mac's local time zone. A disposable Codex replay read 51 files (4.00 GB) in 6.05 seconds with no unpriced records or scan warnings; compact and detailed summaries matched exactly across three repeated queries. The source counters reported seven ambiguous resets, so those historical totals remain provisional. The Claude transcript directory was unavailable; Claude rates were verified against fixtures, not a local corpus replay. No provider transcript or installed-app cache was modified by the audit.
 
 ## 2026-08-03 local corpus audit
 

@@ -1013,6 +1013,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
         summary.accounts = Provider.allCases.compactMap { providers[$0] }
         summary.accounting = accountingDiagnostics(sourceIDs: sourceIDs)
         summary.isProvisional = hasSnapshotStorage(sourceIDs: sourceIDs)
+            || hasCoarseTimeRows(from: start, to: end, sourceIDs: sourceIDs)
         return summary
     }
 
@@ -1079,6 +1080,7 @@ public final class SQLiteIndexStore: @unchecked Sendable {
         summary.sessionCount = distinctSessionCount(start: start, end: end, sourceIDs: sourceIDs, eventsTable: eventsTable, includeDedupeCTE: !materialized)
         summary.accounting = accountingDiagnostics(sourceIDs: sourceIDs)
         summary.isProvisional = hasSnapshotStorage(sourceIDs: sourceIDs)
+            || hasCoarseTimeRows(from: start, to: end, sourceIDs: sourceIDs)
         return summary
     }
 
@@ -1251,6 +1253,22 @@ public final class SQLiteIndexStore: @unchecked Sendable {
         bind(sourceID, to: statement, at: 1)
         guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
         return text(statement, 0)
+    }
+
+    /// All-time totals remain valid during replay, but time-filtered prices
+    /// must not look exact while a selected source still has legacy day rows.
+    private func hasCoarseTimeRows(from start: Date?, to end: Date?, sourceIDs: Set<String>?) -> Bool {
+        guard start != nil || end != nil else { return false }
+        var sql = "SELECT 1 FROM events WHERE id >= 'rollup:' AND id < 'rollup;'"
+        if let sourceIDs {
+            guard !sourceIDs.isEmpty else { return false }
+            sql += " AND source_id IN (\(sourceIDs.map { _ in "?" }.joined(separator: ",")))"
+        }
+        sql += " LIMIT 1"
+        guard let statement = prepare(sql) else { return true }
+        defer { sqlite3_finalize(statement) }
+        bindSourceIDs(sourceIDs, to: statement, startingAt: 1)
+        return sqlite3_step(statement) == SQLITE_ROW
     }
 
     private func hasSnapshotStorage(sourceIDs: Set<String>?) -> Bool {
@@ -1699,14 +1717,14 @@ public final class SQLiteIndexStore: @unchecked Sendable {
     }
 
     private func migrateAccountingGeneration() throws {
-        let currentGeneration = 7
+        let currentGeneration = 8
         let previousGeneration = userVersion()
         guard previousGeneration < currentGeneration else { return }
         if previousGeneration >= 6 {
-            // Prices are computed at query time. Only Astra's newly recognized
-            // long-context subsets and rollups spanning a price-change day
-            // need replay. Retain their rows until the normal bounded refresh
-            // can atomically replace them, including when a source is offline.
+            // Replay old day aggregates into timestamp-preserving rows. Retain
+            // cached totals until each file is replaced atomically by the
+            // normal bounded refresh; unaffected event-mode files stay cached.
+            // Upgrades from generation 6 also need the pricing repair from 7.
             let boundaries = [PricingCatalog.terraLunaRateChange, PricingCatalog.solRateChange]
             let nearBoundary = boundaries.map {
                 "timestamp >= \($0.timeIntervalSince1970 - 86_400) AND timestamp < \($0.timeIntervalSince1970 + 86_400)"
@@ -1716,8 +1734,11 @@ public final class SQLiteIndexStore: @unchecked Sendable {
                     DELETE FROM files WHERE (source_id, path) IN (
                         SELECT source_id, source_path FROM events
                         WHERE provider = 'Codex' AND (
-                            lower(model) LIKE 'gpt-6-astra%'
-                            OR (id LIKE 'rollup:%' AND lower(model) LIKE 'gpt-5.6-%' AND (\(nearBoundary)))
+                            id LIKE 'rollup:%'
+                            OR (\(previousGeneration < 7 ? "1" : "0") AND (
+                                lower(model) LIKE 'gpt-6-astra%'
+                                OR (id LIKE 'rollup-v2:%' AND lower(model) LIKE 'gpt-5.6-%' AND (\(nearBoundary)))
+                            ))
                         )
                     )
                     """)

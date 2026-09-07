@@ -68,6 +68,14 @@ struct WoolPanel: View {
         .onChange(of: model.summary.apiUSD) { _, _ in
             if panelIsActive { celebrateWoolMilestone() }
         }
+        .task(id: panelIsActive && model.dateRange.movesWithTime) {
+            guard panelIsActive, model.dateRange.movesWithTime else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                guard !Task.isCancelled else { return }
+                model.refreshDateWindow()
+            }
+        }
         .onChange(of: model.isRefreshing) { _, isRefreshing in
             if isRefreshing, panelAnimationsEnabled { shearBurst += 1 }
         }
@@ -558,12 +566,14 @@ struct WoolPanel: View {
         )
     }
 
-    /// Whole days covered by the selected range; all-time spans from the
-    /// earliest indexed usage day.
+    /// Day-equivalent duration for rolling ranges; inclusive calendar days
+    /// otherwise. All-time spans from the earliest indexed usage day.
     private var rangeDayCount: Double? {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         switch model.dateRange {
+        case let .lastHours(hours):
+            return Double(max(1, hours)) / 24
         case .currentDay:
             return 1
         case .currentWeek, .currentMonth:
@@ -629,6 +639,7 @@ struct WoolPanel: View {
 
     private func milestoneKey(_ range: UsageDateRange) -> String? {
         switch range {
+        case let .lastHours(hours): return "lastHours\(hours)"
         case .allTime: return "all"
         case .yearToDate: return "ytd"
         case let .lastDays(days): return "last\(days)"

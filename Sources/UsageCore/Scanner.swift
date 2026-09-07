@@ -36,14 +36,14 @@ struct EventRollupAccumulator {
         let attributionBasis: AttributionBasis
         let sessionID: String
         let parentSessionID: String?
-        let day: Date
+        let timestamp: Date
         let model: String
         let sourcePath: String
         let isSubagent: Bool
 
-        /// Preserve the on-disk rollup identity used by earlier index builds.
-        /// Constructing this once per aggregate is cheap; constructing it for
-        /// every source event was a major cost on multi-million-event archives.
+        /// Coalesce only records at the same instant. Day-level aggregation
+        /// loses the boundary needed by rolling windows. A versioned identity
+        /// lets the index distinguish old coarse rows during bounded migration.
         var storageID: String {
             let value = [
                 sourceID,
@@ -57,9 +57,9 @@ struct EventRollupAccumulator {
                 parentSessionID ?? "",
                 model,
                 isSubagent ? "1" : "0",
-                String(day.timeIntervalSince1970)
+                String(timestamp.timeIntervalSince1970)
             ].joined(separator: "\u{1F}")
-            return "rollup:\(value)"
+            return "rollup-v2:\(value)"
         }
     }
 
@@ -72,14 +72,6 @@ struct EventRollupAccumulator {
 
     private var positions: [Key: Int] = [:]
     private var aggregates: [Aggregate] = []
-    private var calendar: Calendar
-    private var cachedDayInterval: DateInterval?
-
-    init(calendar: Calendar = .current) {
-        var calendar = calendar
-        calendar.timeZone = .current
-        self.calendar = calendar
-    }
 
     var values: [UsageEvent] {
         aggregates.map { aggregate in
@@ -94,7 +86,7 @@ struct EventRollupAccumulator {
                 attributionBasis: key.attributionBasis,
                 sessionID: key.sessionID,
                 parentSessionID: key.parentSessionID,
-                timestamp: key.day,
+                timestamp: key.timestamp,
                 model: key.model,
                 sourcePath: key.sourcePath,
                 byteOffset: 0,
@@ -127,9 +119,7 @@ struct EventRollupAccumulator {
         usage: TokenUsage,
         pricingContext: APIPricingContext = APIPricingContext()
     ) {
-        // A local calendar day can span a UTC pricing boundary. Split there
-        // before adding tokens so historical rates survive compact storage.
-        let day = max(day(containing: timestamp), PricingCatalog.pricingPeriodStart(at: timestamp))
+        // Exact instants preserve both rolling-window and pricing boundaries.
         let key = Key(
             provider: provider,
             sourceID: sourceID,
@@ -139,7 +129,7 @@ struct EventRollupAccumulator {
             attributionBasis: attributionBasis,
             sessionID: sessionID,
             parentSessionID: parentSessionID,
-            day: day,
+            timestamp: timestamp,
             model: model,
             sourcePath: sourcePath,
             isSubagent: isSubagent
@@ -159,15 +149,6 @@ struct EventRollupAccumulator {
         }
     }
 
-    private mutating func day(containing timestamp: Date) -> Date {
-        if let cachedDayInterval, cachedDayInterval.contains(timestamp) {
-            return cachedDayInterval.start
-        }
-        let start = calendar.startOfDay(for: timestamp)
-        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
-        cachedDayInterval = DateInterval(start: start, end: end)
-        return start
-    }
 }
 
 public enum UsageScanner {

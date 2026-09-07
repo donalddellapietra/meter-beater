@@ -14,6 +14,7 @@ let package = Package(
         .executableTarget(name: "AIUsageTrackerIndexBenchmark", dependencies: ["UsageCore"]),
         .target(name: "UsageCore", dependencies: ["FastScanner"]),
         .target(name: "FastScanner", publicHeadersPath: "include"),
-        .testTarget(name: "UsageCoreTests", dependencies: ["UsageCore"])
+        .testTarget(name: "UsageCoreTests", dependencies: ["UsageCore"]),
+        .testTarget(name: "AIUsageTrackerTests", dependencies: ["AIUsageTracker"])
     ]
 )

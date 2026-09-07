@@ -62,6 +62,25 @@ struct CompactDateRangeControl: View {
     }
 }
 
+enum DateRangeMode: Hashable {
+    case rolling, calendar
+
+    init(selection: UsageDateRange) {
+        switch selection {
+        case .currentDay, .currentWeek, .currentMonth, .yearToDate: self = .calendar
+        default: self = .rolling
+        }
+    }
+
+    func presets(weekStart: Int, monthStart: Int) -> [UsageDateRange] {
+        switch self {
+        case .rolling: return [.lastHours(24), .lastDays(7), .lastDays(30)]
+        case .calendar:
+            return [.currentDay, .currentWeek(startWeekday: weekStart), .currentMonth(startDay: monthStart), .yearToDate]
+        }
+    }
+}
+
 struct CompactDateRangePicker: View {
     @Bindable var model: WoolModel
     let onSelect: (UsageDateRange) -> Void
@@ -70,31 +89,38 @@ struct CompactDateRangePicker: View {
     @State private var draftEnd: Date?
     @State private var visibleMonth: Date
     @State private var showsCustomCalendar: Bool
+    @State private var mode: DateRangeMode
 
-    private let selection: UsageDateRange
+    private var selection: UsageDateRange { model.dateRange }
     private let language: AppLanguage
     private let calendar: Calendar
     private let today: Date
+    private let now: Date
     private let columns = Array(repeating: GridItem(.flexible(minimum: 34), spacing: 3), count: 7)
 
     init(model: WoolModel, onSelect: @escaping (UsageDateRange) -> Void) {
         self.model = model
         self.onSelect = onSelect
         let selection = model.dateRange
-        self.selection = selection
+        _mode = State(initialValue: DateRangeMode(selection: selection))
         self.language = model.appLanguage
 
-        var calendar = Calendar.current
+        var calendar = UsageDateRange.gregorianCurrent
         calendar.locale = model.appLanguage.locale
         // Assigning a locale resets firstWeekday; keep the user's setting.
         calendar.firstWeekday = Calendar.current.firstWeekday
         self.calendar = calendar
-        let today = calendar.startOfDay(for: Date())
+        let now = Date()
+        self.now = now
+        let today = calendar.startOfDay(for: now)
         self.today = today
 
-        let interval = selection.interval(now: today, calendar: calendar)
+        let interval = selection.interval(now: now, calendar: calendar)
         let start = interval?.start
-        let end = interval.flatMap { calendar.date(byAdding: .day, value: -1, to: $0.end) }
+        let end = interval.flatMap {
+            selection.isRolling ? today : calendar.date(byAdding: .day, value: -1, to: $0.end)
+        }
+            .map { min($0, today) }
         _draftStart = State(initialValue: start)
         _draftEnd = State(initialValue: end)
         _visibleMonth = State(initialValue: Self.monthStart(end ?? today, calendar: calendar))
@@ -108,16 +134,26 @@ struct CompactDateRangePicker: View {
     var body: some View {
         VStack(spacing: 13) {
             pickerHeader
-            cycleRow
-            cycleStartConfig
-            presetRow
-            Divider()
             if showsCustomCalendar {
+                backToPresetsButton
                 calendarHeader
                 calendarGrid
                 Divider()
                 selectionFooter
             } else {
+                Picker(copy.dateRange, selection: $mode) {
+                    Text(copy.rollingWindows).tag(DateRangeMode.rolling)
+                    Text(copy.calendarPeriods).tag(DateRangeMode.calendar)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Text(mode == .rolling ? copy.rollingWindowsHelp : copy.calendarPeriodsHelp)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                presetList
+                Divider()
+                preset(.allTime)
                 customRangeButton
             }
         }
@@ -134,14 +170,16 @@ struct CompactDateRangePicker: View {
         }
     }
 
-    /// Rolling windows: today, the current week/month cycle, and everything.
-    /// The cycles renew on the configured start day, like a subscription.
-    private var cycleRow: some View {
-        HStack(spacing: 6) {
-            preset(copy.today, .currentDay)
-            preset(copy.thisWeek, .currentWeek(startWeekday: model.cycleWeekStart))
-            preset(copy.thisMonth, .currentMonth(startDay: model.cycleMonthStart))
-            preset(copy.allTime, .allTime)
+    /// Browsing a mode does not change the query until a preset is chosen.
+    /// All-time and custom ranges are outside both modes.
+    private var presetList: some View {
+        VStack(spacing: 3) {
+            ForEach(mode.presets(weekStart: model.cycleWeekStart, monthStart: model.cycleMonthStart), id: \.self) { range in
+                preset(range)
+                if range == selection {
+                    cycleStartConfig.padding(.leading, 29)
+                }
+            }
         }
     }
 
@@ -193,12 +231,15 @@ struct CompactDateRangePicker: View {
         }
     }
 
-    private var presetRow: some View {
-        HStack(spacing: 6) {
-            preset(copy.short7Days, .lastDays(7))
-            preset(copy.short30Days, .lastDays(30))
-            preset(copy.yearToDate, .yearToDate)
+    private var backToPresetsButton: some View {
+        Button {
+            showsCustomCalendar = false
+        } label: {
+            Label(copy.dateRangePresets, systemImage: "chevron.left")
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .buttonStyle(.plain)
     }
 
     private var customRangeButton: some View {
@@ -211,7 +252,7 @@ struct CompactDateRangePicker: View {
                 Text("\(copy.customRange)…")
                     .font(.caption.weight(.medium))
                 Spacer()
-                Image(systemName: "chevron.down")
+                Image(systemName: "chevron.right")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(.tertiary)
             }
@@ -223,24 +264,51 @@ struct CompactDateRangePicker: View {
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 
-    private func preset(_ title: String, _ range: UsageDateRange) -> some View {
+    private func preset(_ range: UsageDateRange) -> some View {
         let isSelected = selection == range
+        let title = copy.dateRangeLabel(range, now: now, calendar: calendar)
+        let detail = copy.dateRangeDetail(range, now: now, calendar: calendar)
         return Button {
             onSelect(range)
         } label: {
-            Text(title)
-                .font(.caption2.weight(isSelected ? .semibold : .medium))
-                .frame(maxWidth: .infinity)
-                .frame(height: 25)
-                .contentShape(Rectangle())
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .frame(width: 12)
+                        .opacity(isSelected ? 1 : 0)
+                        .accessibilityHidden(true)
+                    Text(title)
+                        .font(.caption.weight(isSelected ? .semibold : .medium))
+                    Spacer(minLength: 4)
+                    if !range.isRolling {
+                        Text(detail)
+                            .font(.caption2)
+                            .foregroundStyle(isSelected ? Color.white.opacity(0.85) : Color.secondary)
+                    }
+                }
+                if range.isRolling {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.85) : Color.secondary)
+                        .padding(.leading, 20)
+                }
+            }
+            .lineLimit(1)
+            .padding(.horizontal, 9)
+            .frame(maxWidth: .infinity)
+            .frame(height: range.isRolling ? 46 : 30)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(isSelected ? Color.white : Color.primary)
         .background(
-            isSelected ? WoolPalette.dateAccent : Color.primary.opacity(0.05),
+            isSelected ? WoolPalette.dateAccent : Color.clear,
             in: RoundedRectangle(cornerRadius: 7, style: .continuous)
         )
-        .accessibilityValue(isSelected ? copy.selected : "")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(isSelected ? "\(detail), \(copy.selected)" : detail)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 

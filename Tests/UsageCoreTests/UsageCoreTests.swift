@@ -3,14 +3,14 @@ import Testing
 import SQLite3
 @testable import UsageCore
 
-@Test("Compact rollups aggregate records without changing stable identities")
+@Test("Compact rollups preserve exact timestamps and stable identities")
 func compactRollupsAggregateRecords() throws {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = .current
     let first = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 9)))
     let second = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 18)))
     let nextDay = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 2, hour: 9)))
-    var rollups = EventRollupAccumulator(calendar: calendar)
+    var rollups = EventRollupAccumulator()
 
     func event(id: String, timestamp: Date, count: Int, input: Int64, output: Int64) -> UsageEvent {
         UsageEvent(
@@ -30,16 +30,18 @@ func compactRollupsAggregateRecords() throws {
     rollups.append(event(id: "one", timestamp: first, count: 2, input: 3, output: 5))
     rollups.append(event(id: "two", timestamp: second, count: 4, input: 7, output: 11))
     rollups.append(event(id: "three", timestamp: nextDay, count: 1, input: 13, output: 17))
+    rollups.append(event(id: "same-instant", timestamp: first, count: 1, input: 1, output: 1))
 
     let values = rollups.values
-    #expect(values.count == 2)
-    #expect(values[0].eventCount == 6)
-    #expect(values[0].usage.inputTokens == 10)
-    #expect(values[0].usage.outputTokens == 16)
-    #expect(values[1].eventCount == 1)
-    #expect(values.allSatisfy { $0.id.hasPrefix("rollup:") })
+    #expect(values.count == 3)
+    #expect(values[0].eventCount == 3)
+    #expect(values[0].usage.inputTokens == 4)
+    #expect(values[0].usage.outputTokens == 6)
+    #expect(values[1].eventCount == 4)
+    #expect(values.map(\.timestamp) == [first, second, nextDay])
+    #expect(values.allSatisfy { $0.id.hasPrefix("rollup-v2:") })
 
-    var replay = EventRollupAccumulator(calendar: calendar)
+    var replay = EventRollupAccumulator()
     replay.append(event(id: "replacement-id", timestamp: first, count: 6, input: 10, output: 16))
     #expect(replay.values[0].id == values[0].id)
 }
@@ -961,15 +963,15 @@ func subscriptionProrationIsCalendarBased() {
     #expect(SubscriptionAccounting.proratedCost(monthlyUSD: Double.greatestFiniteMagnitude, startDate: start, endDate: end, calendar: calendar).isFinite)
 }
 
-@Test("Usage date ranges use inclusive local calendar days")
+@Test("Rolling ranges use elapsed time and custom ranges include local days")
 func usageDateRangeIntervals() throws {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))
     let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 3, hour: 18)))
 
     let week = try #require(UsageDateRange.lastDays(7).interval(now: now, calendar: calendar))
-    #expect(week.start == calendar.date(from: DateComponents(year: 2026, month: 7, day: 28)))
-    #expect(week.end == calendar.date(from: DateComponents(year: 2026, month: 8, day: 4)))
+    #expect(week.start == calendar.date(from: DateComponents(year: 2026, month: 7, day: 27, hour: 18)))
+    #expect(week.end == now)
 
     let augustFirst = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1)))
     let augustThird = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 3)))
@@ -986,7 +988,7 @@ func usageDateRangeIntervals() throws {
     let dstInterval = try #require(UsageDateRange.custom(start: fallBackDay, end: fallBackDay).interval(calendar: calendar))
     #expect(dstInterval.duration == 25 * 60 * 60)
 
-    let ranges: [UsageDateRange] = [.allTime, .lastDays(30), .yearToDate, .custom(start: augustFirst, end: augustThird)]
+    let ranges: [UsageDateRange] = [.allTime, .lastHours(24), .lastDays(30), .yearToDate, .custom(start: augustFirst, end: augustThird)]
     for range in ranges {
         let encoded = try JSONEncoder().encode(range)
         #expect(try JSONDecoder().decode(UsageDateRange.self, from: encoded) == range)

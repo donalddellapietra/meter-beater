@@ -1,3 +1,25 @@
+# Meter Beater 1.1.4
+
+- Separate date filters into Rolling and Calendar modes. Rolling offers Last
+  24 hours, Last 7 days, and Last 30 days; Calendar offers Today, This week,
+  This month, and This year. All time and Custom range remain separate.
+- Use exact elapsed-time boundaries for rolling windows, including across
+  daylight-saving changes. Show starting timestamps for rolling ranges and
+  inclusive dates for calendar periods.
+- Refresh moving windows as older events expire, even without new usage.
+  Visible panels re-query the local cache each minute; hidden panels do not
+  run this timer or decorative effects. Filters do not rescan transcripts.
+- Preserve event timestamps in compact Codex storage. Older daily aggregates
+  are rebuilt once, in bounded batches; cached totals remain intact until
+  each file is replaced. Time-filtered pricing stays provisional during replay.
+- Preserve custom weekly/monthly renewal settings and label non-calendar
+  periods as cycles. Keep exact boundary handling consistent for both providers.
+
+Universal macOS build for Apple silicon and Intel; macOS 15 or later.
+The release is Developer ID signed and notarized by Apple.
+
+---
+
 # Meter Beater 1.1.3
 
 - Recognize GPT-6 Astra and Claude Fable/Mythos 5.1 with their published API,

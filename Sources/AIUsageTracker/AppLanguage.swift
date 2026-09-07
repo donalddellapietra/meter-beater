@@ -103,16 +103,24 @@ struct AppCopy {
     var staleSourceStatus: String { chinese ? "来源离线" : "Source offline" }
     var waitingStatus: String { chinese ? "等待数据" : "Waiting for data" }
     var dateRange: String { chinese ? "日期范围" : "Date range" }
+    var rollingWindows: String { chinese ? "滚动" : "Rolling" }
+    var calendarPeriods: String { chinese ? "日历" : "Calendar" }
+    var rollingWindowsHelp: String { chinese ? "截至现在的连续时长，不在午夜重置。" : "Trailing time ending now; does not reset at midnight." }
+    var calendarPeriodsHelp: String { chinese ? "从当前日历周期开始，累计至今。" : "From the start of the current calendar period." }
+    var now: String { chinese ? "现在" : "Now" }
+    var last24Hours: String { chinese ? "近 24 小时" : "Last 24 hours" }
     var today: String { chinese ? "今天" : "Today" }
     var thisWeek: String { chinese ? "本周" : "This week" }
     var thisMonth: String { chinese ? "本月" : "This month" }
+    var weeklyCycle: String { chinese ? "每周周期" : "Weekly cycle" }
+    var monthlyCycle: String { chinese ? "每月周期" : "Monthly cycle" }
     var cycleStarts: String { chinese ? "起始" : "Starts" }
     var allTime: String { chinese ? "全部" : "All time" }
-    var yearToDate: String { chinese ? "今年" : "YTD" }
+    var yearToDate: String { chinese ? "今年" : "This year" }
     var last7Days: String { chinese ? "近 7 天" : "Last 7 days" }
     var last30Days: String { chinese ? "近 30 天" : "Last 30 days" }
-    var short7Days: String { chinese ? "7 天" : "7D" }
-    var short30Days: String { chinese ? "30 天" : "30D" }
+    var allRecordedUsage: String { chinese ? "全部用量记录" : "All recorded usage" }
+    var dateRangePresets: String { chinese ? "返回预设范围" : "Back to presets" }
     var customRange: String { chinese ? "自定义范围" : "Custom range" }
     var chooseStartDate: String { chinese ? "选择开始日期" : "Choose a start date" }
     var chooseEndDate: String { chinese ? "再选择结束日期" : "Choose an end date" }
@@ -282,10 +290,13 @@ struct AppCopy {
             return allTime
         case .currentDay:
             return today
-        case .currentWeek:
-            return thisWeek
-        case .currentMonth:
-            return thisMonth
+        case let .lastHours(hours):
+            if hours == 24 { return last24Hours }
+            return chinese ? "近 \(hours) 小时" : "Last \(hours) hours"
+        case let .currentWeek(startWeekday):
+            return startWeekday == calendar.firstWeekday ? thisWeek : weeklyCycle
+        case let .currentMonth(startDay):
+            return startDay == 1 ? thisMonth : monthlyCycle
         case let .lastDays(days):
             if days == 7 { return last7Days }
             if days == 30 { return last30Days }
@@ -303,6 +314,38 @@ struct AppCopy {
             }
             return "\(shortDate(start)) – \(shortDate(end))"
         }
+    }
+
+    /// Rolling presets show the exact starting time; calendar presets show
+    /// inclusive elapsed dates, not their future renewal date.
+    func dateRangeDetail(
+        _ range: UsageDateRange,
+        now: Date = Date(),
+        calendar: Calendar = UsageDateRange.gregorianCurrent
+    ) -> String {
+        guard let interval = range.interval(now: now, calendar: calendar) else { return allRecordedUsage }
+        if range.isRolling {
+            var style = Date.FormatStyle(
+                locale: language.locale, calendar: calendar, timeZone: calendar.timeZone
+            ).month(.abbreviated).day().hour().minute()
+            if calendar.component(.year, from: interval.start) != calendar.component(.year, from: now) {
+                style = style.year()
+            }
+            return "\(interval.start.formatted(style)) – \(self.now)"
+        }
+        guard let lastDay = calendar.date(byAdding: .day, value: -1, to: interval.end) else { return allRecordedUsage }
+        let today = calendar.startOfDay(for: now)
+        let end = min(lastDay, today)
+        let thisYear = calendar.component(.year, from: today)
+        let includesYear = calendar.component(.year, from: interval.start) != thisYear
+            || calendar.component(.year, from: end) != thisYear
+        var style = Date.FormatStyle(
+            locale: language.locale, calendar: calendar, timeZone: calendar.timeZone
+        ).month(.abbreviated).day()
+        if includesYear { style = style.year() }
+        let startLabel = interval.start.formatted(style)
+        if calendar.isDate(interval.start, inSameDayAs: end) { return startLabel }
+        return "\(startLabel) – \(end.formatted(style))"
     }
 
     func shortDate(_ date: Date) -> String {

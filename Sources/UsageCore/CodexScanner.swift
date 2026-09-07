@@ -133,7 +133,8 @@ enum CodexScanner {
                 }
             }
             lastSnapshotKey = key
-            guard delta.hasPositiveUsage, interval?.contains(timestamp) ?? true else { return }
+            guard delta.hasPositiveUsage,
+                  interval.map({ timestamp >= $0.start && timestamp < $0.end }) ?? true else { return }
 
             let usage = TokenUsage(inputTokens: max(0, delta.input - delta.cached), cachedInputTokens: delta.cached, cacheWrite5mInputTokens: delta.cacheWrite5m, cacheWrite1hInputTokens: delta.cacheWrite1h, outputTokens: delta.output, reasoningOutputTokens: delta.reasoningOutput)
             let longContextUsage = longContextThreshold

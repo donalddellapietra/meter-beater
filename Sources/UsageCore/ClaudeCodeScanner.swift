@@ -26,7 +26,9 @@ enum ClaudeCodeScanner {
             result.bytesRead += file.bytesRead
         }
 
-        result.events = latestByMessage.values.filter { interval?.contains($0.timestamp) ?? true }.sorted { $0.timestamp < $1.timestamp }
+        result.events = latestByMessage.values.filter { event in
+            interval.map { event.timestamp >= $0.start && event.timestamp < $0.end } ?? true
+        }.sorted { $0.timestamp < $1.timestamp }
         return result
     }
 
@@ -83,7 +85,7 @@ enum ClaudeCodeScanner {
             if let old = latestByMessage[dedupeKey], old.timestamp > event.timestamp || (old.timestamp == event.timestamp && old.byteOffset >= event.byteOffset) { return }
             latestByMessage[dedupeKey] = event
         }
-        for event in latestByMessage.values where interval?.contains(event.timestamp) ?? true {
+        for event in latestByMessage.values where interval.map({ event.timestamp >= $0.start && event.timestamp < $0.end }) ?? true {
             if compact { rollups?.append(event) } else { result.events.append(event) }
         }
         if let rollups { result.events = rollups.values }

@@ -28,7 +28,7 @@ Meter Beater combines locally recorded usage from both tools into one menu-bar t
 
 ## Install
 
-1. Download **v1.1.3** from [meter-beater.app.space](https://meter-beater.app.space/) or [Releases](../../releases/latest).
+1. Download **v1.1.4** from [meter-beater.app.space](https://meter-beater.app.space/) or [Releases](../../releases/latest).
 2. Unzip and drag **Meter Beater.app** into Applications.
 3. Open it and look for the ✂️ in your menu bar — if there's no sheep, your menu bar is overcrowded and macOS quietly hid it, so evict an icon you love less.
 
@@ -61,9 +61,11 @@ see [`docs/RELEASING.md`](docs/RELEASING.md).
 The accounting and pricing contract is documented in
 [`docs/ACCOUNTING.md`](docs/ACCOUNTING.md).
 
-Version 1.1.3 includes Astra, Fable 5.1, and Mythos 5.1 pricing, plus historical
-rate corrections. Background refresh remains enabled while decorative effects
-sleep whenever the menu-bar panel is closed. See [release notes](RELEASE_NOTES.md).
+Version 1.1.4 separates Rolling and Calendar date filters, adds an exact Last
+24 hours window, and expires older usage without rescanning transcripts.
+Astra, Fable 5.1, and Mythos 5.1 pricing is included. Background refresh remains
+enabled while decorative effects sleep whenever the menu-bar panel is closed.
+See [release notes](RELEASE_NOTES.md).
 
 ## Privacy
 
